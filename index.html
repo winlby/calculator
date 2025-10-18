@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор вывода криптовалют</title>
+<style>
+body { font-family:'Segoe UI', Tahoma, sans-serif; min-height:100vh; margin:0; padding-top:40px;
+    background:linear-gradient(135deg,#37aee2,#1c9ceb); display:flex; justify-content:center;}
+.page-container { display:flex; flex-direction:column; align-items:center; width:100%; max-width:400px;}
+.calculator { background:#fff; padding:30px 40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);
+    text-align:center; width:100%; }
+h1 { font-size:1.5em; margin-bottom:20px; color:#222;}
+select,input { width:100%; padding:10px; margin:10px 0; border-radius:10px; border:1px solid #ddd; font-size:1em;}
+.result { margin-top:20px; font-size:1.1em; padding:10px; border-radius:10px; transition:all 0.3s;}
+.note { margin-top:10px; font-size:0.9em; color:#444; background:#f5f5f5; padding:8px; border-radius:8px;}
+.warning { background:#ffe0e0; color:#c00;}
+.success { background:#e0ffe0; color:#080;}
+.loading { background:#fff3cd; color:#a67c00;}
+.callout-yellow { background-color:#fff3cd; color:#856404; padding:10px; border-radius:10px; margin-top:10px;
+    font-size:0.95em; text-align:left; opacity:0; transform:translateY(10px); transition:opacity 0.8s, transform 0.8s; width:100%;}
+.callout-yellow.visible { opacity:1; transform:translateY(0);}
+</style>
+</head>
+<body>
+<div class="page-container">
+    <div class="calculator">
+        <h1>Калькулятор вывода</h1>
+        <select id="crypto">
+            <option value="USDT-TRC20">USDT (TRC-20)</option>
+            <option value="USDT-TON">USDT (TON)</option>
+            <option value="BTC">BTC</option>
+            <option value="TON">TON</option>
+            <option value="XAUT">XAUT</option>
+            <option value="NOT">NOT</option>
+            <option value="DOGS">DOGS</option>
+            <option value="HMSTR">HMSTR</option>
+            <option value="X">X</option>
+            <option value="MAJOR">MAJOR</option>
+            <option value="CATI">CATI</option>
+            <option value="TAC">TAC</option>
+            <option value="TRX">TRX</option>
+            <option value="XLM">XLM</option>
+            <option value="FLR">FLR</option>
+            <option value="ETH">ETH</option>
+            <option value="SOL">SOL</option>
+        </select>
+        <input type="number" id="amount" placeholder="Сумма" min="0" step="any">
+        <div class="result" id="result"></div>
+        <div class="note" id="note">
+            Минимальный лимит обмена в долларах для всех пар, кроме пар с BTC — $1,3.<br>
+            Минимальный лимит обмена в долларах для пар с BTC (в обе стороны) — $3.
+        </div>
+    </div>
+    <div id="callouts"></div>
+</div>
+
+<script>
+// ====== Заранее прописанные комиссии и лимиты ======
+const fees = {
+    "USDT-TRC20": {fee:3.5, inUSD:false},
+    "USDT-TON": {fee:1, inUSD:false},
+    "BTC": {fee:0.0004, inUSD:false},
+    "TON": {fee:0.05, inUSD:false},
+    "XAUT": {fee:1, inUSD:true},
+    "NOT": {fee:1, inUSD:true},
+    "DOGS": {fee:1, inUSD:true},
+    "HMSTR": {fee:1, inUSD:true},
+    "X": {fee:1, inUSD:true},
+    "MAJOR": {fee:1, inUSD:true},
+    "CATI": {fee:1, inUSD:true},
+    "TAC": {fee:1, inUSD:true},
+    "TRX": {fee:0.3, inUSD:true},
+    "XLM": {fee:0.4, inUSD:true},
+    "FLR": {fee:0.3, inUSD:true},
+    "ETH": {fee:3.79, inUSD:false},
+    "SOL": {fee:0.006, inUSD:false}
+};
+
+const minWithdraw = {
+    "USDT-TRC20":1,"USDT-TON":1,"BTC":0.0001,"TON":0.1,
+    "XAUT":0.0002,"NOT":50,"DOGS":1000,"HMSTR":150,"X":6000,
+    "MAJOR":1,"CATI":1,"TAC":0.1,"TRX":0,"XLM":0,"FLR":0,
+    "ETH":0,"SOL":0
+};
+
+// ====== Курсы ======
+const binanceSymbols={
+    "USDT-TRC20":"USDT","USDT-TON":"USDT","BTC":"BTC","ETH":"ETH","SOL":"SOL","TON":"TON",
+    "TRX":"TRX","XLM":"XLM","NOT":"NOT","DOGS":"DOGS","HMSTR":"HMSTR","CATI":"CATI","XAUT":"XAUt",
+    "X":"XCOM","TAC":"TAC","FLR":"FLR","MAJOR":"MAJOR"
+};
+const coinPaprikaIds={
+    "USDT-TRC20":"usdt-tether","USDT-TON":"usdt-tether","BTC":"btc-bitcoin",
+    "ETH":"eth-ethereum","SOL":"sol-solana","TON":"ton-toncoin","TRX":"trx-tron","XLM":"xlm-stellar",
+    "NOT":"not-notcoin","DOGS":"dogs-dogs-2","HMSTR":"hmstr-hamster","CATI":"cati-catizen",
+    "XAUT":"xaut-tether-gold","X":"x-x-empire","TAC":"tac-tacocat","FLR":"flr-flare","MAJOR":"major-major"
+};
+
+const pricesCache={};
+const cryptoSelect=document.getElementById("crypto");
+const amountInput=document.getElementById("amount");
+const resultDiv=document.getElementById("result");
+
+// ====== Получение курса ======
+async function fetchPrice(symbol){
+    let price=null;
+    const binSym=binanceSymbols[symbol];
+    if(binSym){
+        try{ const res=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binSym}USDT`);
+              const data=await res.json(); if(data.price) price=parseFloat(data.price);}catch{}
+    }
+    if(!price){
+        const id=coinPaprikaIds[symbol];
+        if(id){
+            try{ const res=await fetch(`https://api.coinpaprika.com/v1/tickers/${id}`);
+                  const data=await res.json(); if(data.quotes?.USD?.price) price=data.quotes.USD.price;}catch{}
+        }
+    }
+    return price;
+}
+
+async function preloadPrices(){
+    resultDiv.textContent="Загрузка курсов...";
+    resultDiv.className="result loading";
+    for(const s of Object.keys(binanceSymbols)){
+        const p=await fetchPrice(s);
+        if(p!==null) pricesCache[s]=p;
+    }
+    resultDiv.textContent="Курсы загружены.";
+    resultDiv.className="result success";
+}
+setInterval(preloadPrices,180000);
+
+// ====== Callout-блоки ======
+async function loadCallouts(){
+    try{
+        const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://help.ru.wallet.tg/article/73-komissii-limity-i-kursy');
+        const res=await fetch(url);
+        const data=await res.json();
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(data.contents,'text/html');
+        const calloutsContainer=document.getElementById('callouts');
+        calloutsContainer.innerHTML='';
+        doc.querySelectorAll('.callout-yellow').forEach((c,i)=>{
+            const div=document.createElement('div');
+            div.className='callout-yellow';
+            div.innerHTML=c.innerHTML;
+            calloutsContainer.appendChild(div);
+            setTimeout(()=>div.classList.add('visible'), i*300);
+        });
+    }catch(e){console.log('Ошибка callouts',e);}
+}
+
+// ====== Калькулятор ======
+function updateResult(){
+    const crypto=cryptoSelect.value;
+    const amount=parseFloat(amountInput.value);
+    const feeData=fees[crypto];
+    const minAmount=minWithdraw[crypto];
+    const symbol=crypto.split('-')[0];
+    resultDiv.className='result';
+
+    if(isNaN(amount)||amount<=0){ resultDiv.textContent="Введите корректную сумму."; resultDiv.classList.add('warning'); return;}
+    if(!minAmount||!feeData){ resultDiv.textContent=`Информация о комиссии или минимальной сумме для ${symbol} недоступна.`; resultDiv.classList.add('warning'); return;}
+    if(amount<minAmount){ resultDiv.textContent=`Минимальная сумма вывода для ${symbol} — ${minAmount} ${symbol}.`; resultDiv.classList.add('warning'); return;}
+    if(!pricesCache[crypto]){ resultDiv.textContent=`⚠️ Курс для ${symbol} недоступен.`; resultDiv.classList.add('warning'); return;}
+
+    const price=pricesCache[crypto];
+    const feeInToken=feeData.inUSD ? feeData.fee/price : feeData.fee;
+    const remaining=amount-feeInToken;
+    const feeDisplay=feeData.inUSD ? `${feeData.fee} USD (~${feeInToken.toFixed(6)} ${symbol})` : `${feeInToken.toFixed(6)} ${symbol}`;
+    if(remaining<0){ resultDiv.textContent=`Сумма комиссии (${feeDisplay}) превышает введённую сумму.`; resultDiv.classList.add('warning'); return;}
+    const remainingUSDT=remaining*price;
+    resultDiv.innerHTML=`После вычета комиссии (${feeDisplay}) вы получите:<br><b>${remaining.toFixed(6)} ${symbol}</b> ≈ <b>${remainingUSDT.toFixed(2)} USDT</b>`;
+    resultDiv.classList.add('success');
+}
+
+cryptoSelect.addEventListener("change",updateResult);
+amountInput.addEventListener("input",updateResult);
+
+// ====== Инициализация ======
+(async()=>{
+    await loadCallouts();
+    await preloadPrices();
+})();
+</script>
+</body>
+</html>
