@@ -5,24 +5,103 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Калькулятор вывода криптовалют</title>
 <style>
-body { font-family:'Segoe UI', Tahoma, sans-serif; min-height:100vh; margin:0; padding-top:40px;
-    background:linear-gradient(135deg,#37aee2,#1c9ceb); display:flex; justify-content:center;}
-.page-container { display:flex; flex-direction:column; align-items:center; width:100%; max-width:400px;}
-.calculator { background:#fff; padding:30px 40px; border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,0.1);
-    text-align:center; width:100%; }
-h1 { font-size:1.5em; margin-bottom:20px; color:#222;}
-select,input { width:100%; padding:10px; margin:10px 0; border-radius:10px; border:1px solid #ddd; font-size:1em;}
-.result { margin-top:20px; font-size:1.1em; padding:10px; border-radius:10px; transition:all 0.3s;}
-.note { margin-top:10px; font-size:0.9em; color:#444; background:#f5f5f5; padding:8px; border-radius:8px;}
-.warning { background:#ffe0e0; color:#c00;}
-.success { background:#e0ffe0; color:#080;}
-.loading { background:#fff3cd; color:#a67c00;}
-.callout-yellow { background-color:#fff3cd; color:#856404; padding:10px; border-radius:10px; margin-top:10px;
-    font-size:0.95em; text-align:left; opacity:0; transform:translateY(10px); transition:opacity 0.8s, transform 0.8s; width:100%;}
-.callout-yellow.visible { opacity:1; transform:translateY(0);}
+body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #37aee2, #1c9ceb);
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.page-container {
+    width: 100%;
+    max-width: 450px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.calculator {
+    background: #fff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+h1 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    color: #222;
+}
+
+select, input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1em;
+    box-sizing: border-box;
+}
+
+.result {
+    margin-top: 20px;
+    font-size: 1.1em;
+    padding: 12px;
+    border-radius: 12px;
+    transition: all 0.3s;
+    min-height: 50px;
+}
+
+.note {
+    margin-top: 15px;
+    font-size: 0.9em;
+    color: #444;
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.warning { background: #ffe0e0; color: #c00;}
+.success { background: #e0ffe0; color: #080;}
+.loading { background: #fff3cd; color: #a67c00;}
+
+.callout-yellow {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    border-radius: 12px;
+    margin-top: 10px;
+    font-size: 0.95em;
+    text-align: left;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+.callout-yellow.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 500px) {
+    .calculator { padding: 20px; }
+    h1 { font-size: 1.5em; }
+    select, input { padding: 10px; }
+    .result { font-size: 1em; padding: 10px; }
+    .note { padding: 8px; font-size: 0.85em; }
+    .callout-yellow { padding: 10px; font-size: 0.85em; }
+}
 </style>
 </head>
 <body>
+
 <div class="page-container">
     <div class="calculator">
         <h1>Калькулятор вывода</h1>
@@ -52,6 +131,7 @@ select,input { width:100%; padding:10px; margin:10px 0; border-radius:10px; bord
             Минимальный лимит обмена в долларах для пар с BTC (в обе стороны) — $3.
         </div>
     </div>
+
     <div id="callouts"></div>
 </div>
 
