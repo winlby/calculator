@@ -7,18 +7,18 @@
 <style>
 body {
     font-family: 'Segoe UI', Tahoma, sans-serif;
-    margin: 0;
-    background: linear-gradient(135deg, #37aee2, #1c9ceb);
     display: flex;
     justify-content: center;
     padding: 20px;
+    margin: 0;
+    background: linear-gradient(135deg, #37aee2, #1c9ceb);
 }
 .page-container {
-    width: 100%;
-    max-width: 450px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 100%;
+    max-width: 400px;
 }
 .calculator {
     background: #fff;
@@ -27,29 +27,19 @@ body {
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     text-align: center;
     width: 100%;
-    transition: all 0.3s ease;
 }
-h1 { font-size: 1.8em; margin-bottom: 20px; color: #222; }
-select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 1em; box-sizing: border-box; }
-.result { margin-top: 20px; font-size: 1.1em; padding: 12px; border-radius: 12px; transition: all 0.3s; min-height: 50px; }
-.note { margin-top: 15px; font-size: 0.9em; color: #444; background: #f5f5f5; padding: 10px; border-radius: 10px; }
-.warning { background: #ffe0e0; color: #c00;}
-.success { background: #e0ffe0; color: #080;}
-.loading { background: #fff3cd; color: #a67c00;}
-.callout-yellow { background-color: #fff3cd; color: #856404; padding: 12px; border-radius: 12px; margin-top: 10px; font-size: 0.95em; text-align: left; opacity: 0; transform: translateY(10px); transition: opacity 0.8s ease, transform 0.8s ease; width: 100%; box-sizing: border-box; }
-.callout-yellow.visible { opacity: 1; transform: translateY(0); }
-@media (max-width: 500px) {
-    .calculator { padding: 20px; }
-    h1 { font-size: 1.5em; }
-    select, input { padding: 10px; }
-    .result { font-size: 1em; padding: 10px; }
-    .note { padding: 8px; font-size: 0.85em; }
-    .callout-yellow { padding: 10px; font-size: 0.85em; }
-}
+h1 { font-size: 1.5em; margin-bottom: 20px; color: #222; }
+select,input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 1em; }
+.result { margin-top: 20px; font-size: 1.1em; padding: 10px; border-radius: 10px; transition: all 0.3s; }
+.note { margin-top: 10px; font-size: 0.9em; color: #444; background: #f5f5f5; padding: 8px; border-radius: 8px; }
+.warning { background: #ffe0e0; color: #c00; }
+.success { background: #e0ffe0; color: #080; }
+.loading { background: #fff3cd; color: #a67c00; }
+.callout-yellow { background-color:#fff3cd; color:#856404; padding:10px; border-radius:10px; margin-top:10px; font-size:0.95em; text-align:left; opacity:0; transform:translateY(10px); transition: opacity 0.8s ease, transform 0.8s ease; width:100%; }
+.callout-yellow.visible { opacity:1; transform:translateY(0); }
 </style>
 </head>
 <body>
-
 <div class="page-container">
     <div class="calculator">
         <h1>Калькулятор вывода</h1>
@@ -83,114 +73,132 @@ select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px;
 </div>
 
 <script>
-const cryptoSelect=document.getElementById("crypto");
-const amountInput=document.getElementById("amount");
-const resultDiv=document.getElementById("result");
-let fees={}, minWithdraw={}, pricesCache={};
+// ====== Заранее прописанные комиссии и минимальные суммы ======
+const fees = {
+    "USDT-TRC20": {fee:3.5, inUSD:false}, "USDT-TON": {fee:1, inUSD:false}, "BTC": {fee:0.0004, inUSD:false},
+    "TON": {fee:0.05, inUSD:false}, "XAUT": {fee:1, inUSD:true}, "NOT": {fee:1, inUSD:true},
+    "DOGS": {fee:1, inUSD:true}, "HMSTR": {fee:1, inUSD:true}, "X": {fee:1, inUSD:true},
+    "MAJOR": {fee:1, inUSD:true}, "CATI": {fee:1, inUSD:true}, "TAC": {fee:1, inUSD:true},
+    "TRX": {fee:0.3, inUSD:true}, "XLM": {fee:0.4, inUSD:true}, "FLR": {fee:0.3, inUSD:true},
+    "ETH": {fee:3.79, inUSD:false}, "SOL": {fee:0.006, inUSD:false}
+};
+const minWithdraw = {
+    "USDT-TRC20":1,"USDT-TON":1,"BTC":0.0001,"TON":0.1,"XAUT":0.0002,"NOT":50,"DOGS":1000,
+    "HMSTR":150,"X":6000,"MAJOR":1,"CATI":1,"TAC":0.1,"TRX":0,"XLM":0,"FLR":0,"ETH":0,"SOL":0
+};
 
-// ====== Парсинг данных с сайта ======
-async function loadData(){
-    try{
-        const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://help.ru.wallet.tg/article/73-komissii-limity-i-kursy');
-        const res=await fetch(url);
-        const data=await res.json();
-        const parser=new DOMParser();
-        const doc=parser.parseFromString(data.contents,'text/html');
+// ====== Тикеры ======
+const binanceSymbols = {
+    "USDT-TRC20":"USDT","USDT-TON":"USDT","BTC":"BTC","ETH":"ETH","SOL":"SOL","TON":"TON",
+    "TRX":"TRX","XLM":"XLM","NOT":"NOT","DOGS":"DOGS","HMSTR":"HMSTR","CATI":"CATI",
+    "XAUT":"XAUt","X":"XCOM","TAC":"TAC","FLR":"FLR","MAJOR":"MAJOR"
+};
+const coinPaprikaIds = {
+    "USDT-TRC20":"usdt-tether","USDT-TON":"usdt-tether","BTC":"btc-bitcoin","ETH":"eth-ethereum",
+    "SOL":"sol-solana","TON":"ton-toncoin","TRX":"trx-tron","XLM":"xlm-stellar","NOT":"not-notcoin",
+    "DOGS":"dogs-dogs-2","HMSTR":"hmstr-hamster","CATI":"cati-catizen","XAUT":"xaut-tether-gold",
+    "X":"x-x-empire","TAC":"tac-tacocat","FLR":"flr-flare-network","MAJOR":"major-major"
+};
 
-        // Callouts
-        const calloutsContainer=document.getElementById('callouts');
-        calloutsContainer.innerHTML='';
-        doc.querySelectorAll('.callout-yellow').forEach((c,i)=>{
-            const div=document.createElement('div');
-            div.className='callout-yellow';
-            div.innerHTML=c.innerHTML;
-            calloutsContainer.appendChild(div);
-            setTimeout(()=>div.classList.add('visible'), i*300);
-        });
+// ====== Цены ======
+let pricesCache = {};
+const cryptoSelect = document.getElementById("crypto");
+const amountInput = document.getElementById("amount");
+const resultDiv = document.getElementById("result");
 
-        // Таблицы комиссий и лимитов
-        fees={}; minWithdraw={};
-        doc.querySelectorAll('table').forEach(table=>{
-            table.querySelectorAll('tr').forEach(tr=>{
-                const tds=tr.querySelectorAll('td');
-                if(tds.length>=3){
-                    const sym=tds[0].innerText.trim();
-                    const min=parseFloat(tds[1].innerText.replace(/[^0-9.,]/g,'').replace(',','.'));
-                    const fee=parseFloat(tds[2].innerText.replace(/[^0-9.,]/g,'').replace(',','.'));
-                    if(sym && !isNaN(min)) minWithdraw[sym]=min;
-                    if(sym && !isNaN(fee)) fees[sym]={fee:fee, inUSD:true};
-                }
-            });
-        });
-    }catch(e){ console.log('Ошибка загрузки данных',e); }
+// ====== Получение курсов ======
+async function fetchPriceFromBinance(symbol){
+    const binSym = binanceSymbols[symbol];
+    if(!binSym) return null;
+    try {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binSym}USDT&_=${Date.now()}`);
+        const data = await res.json();
+        return parseFloat(data.price);
+    }catch{return null;}
 }
-
-// ====== Получение курса ======
-const binanceSymbols={ "USDT-TRC20":"USDT","USDT-TON":"USDT","BTC":"BTC","ETH":"ETH","SOL":"SOL","TON":"TON","TRX":"TRX","XLM":"XLM","NOT":"NOT","DOGS":"DOGS","HMSTR":"HMSTR","CATI":"CATI","XAUT":"XAUt","X":"XCOM","TAC":"TAC","FLR":"FLR","MAJOR":"MAJOR" };
-const coinPaprikaIds={ "USDT-TRC20":"usdt-tether","USDT-TON":"usdt-tether","BTC":"btc-bitcoin","ETH":"eth-ethereum","SOL":"sol-solana","TON":"ton-toncoin","TRX":"trx-tron","XLM":"xlm-stellar","NOT":"not-notcoin","DOGS":"dogs-dogs-2","HMSTR":"hmstr-hamster","CATI":"cati-catizen","XAUT":"xaut-tether-gold","X":"x-x-empire","TAC":"tac-tacocat","FLR":"flr-flare","MAJOR":"major-major" };
-
+async function fetchPriceFromCoinPaprika(symbol){
+    const id = coinPaprikaIds[symbol];
+    if(!id) return null;
+    try{
+        const res = await fetch(`https://api.coinpaprika.com/v1/tickers/${id}?_=${Date.now()}`);
+        const data = await res.json();
+        return data.quotes?.USD?.price??null;
+    }catch{return null;}
+}
 async function fetchPrice(symbol){
-    let price=null;
-    const binSym=binanceSymbols[symbol];
-    if(binSym){
-        try{ const res=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binSym}USDT&_=${Date.now()}`);
-              const data=await res.json(); if(data.price) price=parseFloat(data.price);}catch{}
-    }
-    if(!price){
-        const id=coinPaprikaIds[symbol];
-        if(id){
-            try{ const res=await fetch(`https://api.coinpaprika.com/v1/tickers/${id}?_=${Date.now()}`);
-                  const data=await res.json(); if(data.quotes?.USD?.price) price=data.quotes.USD.price;}catch{}
-        }
-    }
+    let price = await fetchPriceFromBinance(symbol);
+    if(!price) price = await fetchPriceFromCoinPaprika(symbol);
     return price;
 }
-
 async function preloadPrices(){
     resultDiv.textContent="Загрузка курсов...";
     resultDiv.className="result loading";
     pricesCache={};
-    for(const s of Object.keys(binanceSymbols)){
-        const p=await fetchPrice(s);
-        if(p!==null) pricesCache[s]=p;
+    for(let sym of Object.keys(binanceSymbols)){
+        const price = await fetchPrice(sym);
+        if(price!==null) pricesCache[sym]=price;
     }
     resultDiv.textContent="Курсы загружены.";
     resultDiv.className="result success";
 }
 setInterval(preloadPrices,180000);
 
-// ====== Калькулятор ======
+// ====== Callouts ======
+async function loadCallouts(){
+    try{
+        const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://help.ru.wallet.tg/article/73-komissii-limity-i-kursy');
+        const res=await fetch(url);
+        const data=await res.json();
+        const parser=new DOMParser();
+        const doc=parser.parseFromString(data.contents,'text/html');
+        const callouts=doc.querySelectorAll('.callout-yellow');
+        const calloutsContainer=document.getElementById('callouts');
+        calloutsContainer.innerHTML='';
+        callouts.forEach((c,i)=>{
+            const div=document.createElement('div');
+            div.className='callout-yellow';
+            div.innerHTML=c.innerHTML; // сохраняем форматирование
+            calloutsContainer.appendChild(div);
+            setTimeout(()=>div.classList.add('visible'),i*300);
+        });
+    }catch(e){console.log('Callouts не загрузились',e);}
+}
+loadCallouts();
+
+// ====== Расчёт ======
 function updateResult(){
-    const crypto=cryptoSelect.value;
-    const amount=parseFloat(amountInput.value);
-    const feeData=fees[crypto];
-    const minAmount=minWithdraw[crypto];
-    const symbol=crypto.split('-')[0];
+    const crypto = cryptoSelect.value;
+    const amount = parseFloat(amountInput.value);
+    const feeData = fees[crypto];
+    const minAmount = minWithdraw[crypto];
+    const symbol = crypto.split('-')[0];
     resultDiv.className='result';
 
-    if(isNaN(amount)||amount<=0){ resultDiv.textContent="Введите корректную сумму."; resultDiv.classList.add('warning'); return;}
-    if(!minAmount||!feeData){ resultDiv.textContent=`Информация о комиссии или минимальной сумме для ${symbol} недоступна.`; resultDiv.classList.add('warning'); return;}
-    if(amount<minAmount){ resultDiv.textContent=`Минимальная сумма вывода для ${symbol} — ${minAmount} ${symbol}.`; resultDiv.classList.add('warning'); return;}
-    if(!pricesCache[crypto]){ resultDiv.textContent=`⚠️ Курс для ${symbol} недоступен.`; resultDiv.classList.add('warning'); return;}
+    if(isNaN(amount)||amount<=0){ resultDiv.textContent="Введите корректную сумму."; resultDiv.classList.add("warning"); return;}
+    if(amount<minAmount){ resultDiv.textContent=`Минимальная сумма вывода для ${symbol} — ${minAmount} ${symbol}.`; resultDiv.classList.add("warning"); return;}
+    if(!pricesCache[crypto]){ resultDiv.textContent=`⚠️ Курс для ${symbol} недоступен.`; resultDiv.classList.add("warning"); return;}
 
     const price=pricesCache[crypto];
-    const feeInToken=feeData.inUSD ? feeData.fee/price : feeData.fee;
+    let feeInToken = feeData.inUSD ? feeData.fee/price : feeData.fee;
     const remaining=amount-feeInToken;
-    const feeDisplay=feeData.inUSD ? `${feeData.fee} USD (~${feeInToken.toFixed(6)} ${symbol})` : `${feeInToken.toFixed(6)} ${symbol}`;
-    if(remaining<0){ resultDiv.textContent=`Сумма комиссии (${feeDisplay}) превышает введённую сумму.`; resultDiv.classList.add('warning'); return;}
-    const remainingUSDT=remaining*price;
-    resultDiv.innerHTML=`После вычета комиссии (${feeDisplay}) вы получите:<br><b>${remaining.toFixed(6)} ${symbol}</b> ≈ <b>${remainingUSDT.toFixed(2)} USDT</b>`;
-    resultDiv.classList.add('success');
-}
+    const feeDisplay = feeData.inUSD ? `${feeData.fee} USD (~${feeInToken.toFixed(6)} ${symbol})` : `${feeInToken.toFixed(6)} ${symbol}`;
 
+    if(remaining<0){ resultDiv.textContent=`Сумма комиссии (${feeDisplay}) превышает введённую сумму.`; resultDiv.classList.add("warning"); return;}
+    const remainingUSDT = remaining*price;
+    resultDiv.innerHTML=`После вычета комиссии (${feeDisplay}) вы получите:<br><b>${remaining.toFixed(6)} ${symbol}</b> ≈ <b>${remainingUSDT.toFixed(2)} USDT</b>`;
+    resultDiv.classList.add("success");
+}
 cryptoSelect.addEventListener("change",updateResult);
 amountInput.addEventListener("input",updateResult);
 
-// ====== Инициализация ======
-(async()=>{
-    await loadData();
-    await preloadPrices();
-})();
+// ====== Обновление при возвращении в Web App ======
+document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden){ preloadPrices(); loadCallouts(); }
+});
+
+// ====== Старт ======
+preloadPrices();
+updateResult();
 </script>
 </body>
 </html>
