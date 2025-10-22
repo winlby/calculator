@@ -213,12 +213,13 @@ amountInput.addEventListener("input",updateResult);
 refreshBtn.addEventListener("click", preloadPrices);
 
 // ====== Обновление при возвращении 
-.addEventListener('visibilitychange',()=>{ if(!document.hidden){ preloadPrices(); loadCallouts(); }});
-window.addEventListener('focus',()=>{ preloadPrices(); loadCallouts(); });
+//.addEventListener('visibilitychange',()=>{ if(!document.hidden){ preloadPrices(); loadCallouts(); }});
+//window.addEventListener('focus',()=>{ preloadPrices(); loadCallouts(); });
 
 // ====== Старт ======
 (async()=>{ await loadCallouts(); await preloadPrices(); updateResult(); })();
 </script>
 </body>
 </html>
+
 
