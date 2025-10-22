@@ -29,9 +29,25 @@ body {
     width: 100%;
 }
 h1 { font-size: 1.5em; margin-bottom: 20px; color: #222; }
-select,input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 1em; }
+select,input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 1em; transition: all 0.3s; }
+input:disabled { background: #f0f0f0; color: #999; cursor: not-allowed; }
+button {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    background: #1c9ceb;
+    color: #fff;
+    font-size: 0.8em;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background 0.3s;
+    vertical-align: middle;
+}
+button:hover { background: #0d7ecf; }
+button:disabled { background: #aaa; cursor: not-allowed; }
 .result { margin-top: 20px; font-size: 1.1em; padding: 10px; border-radius: 10px; transition: all 0.3s; }
-.note { margin-top: 10px; font-size: 0.9em; color: #444; background: #f5f5f5; padding: 8px; border-radius: 8px; }
+.note { margin-top: 10px; font-size: 0.9em; color: #444; background: #f5f5f5; padding: 8px; border-radius: 8px; text-align: left; }
+.note-small { margin-top: 10px; font-size: 0.8em; color: #666; text-align: left; display: flex; align-items: center; }
 .warning { background: #ffe0e0; color: #c00; }
 .success { background: #e0ffe0; color: #080; }
 .loading { background: #fff3cd; color: #a67c00; }
@@ -68,19 +84,23 @@ select,input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; 
             Минимальный лимит обмена в долларах для всех пар, кроме пар с BTC — $1,3.<br>
             Минимальный лимит обмена в долларах для пар с BTC (в обе стороны) — $3.
         </div>
+        <div class="note-small">
+            * Курсы обновляются 1 раз в 5 минут или по кнопке
+            <button id="refreshBtn">Обновить</button>
+        </div>
     </div>
     <div id="callouts"></div>
 </div>
 
 <script>
-// ====== Заранее прописанные комиссии и минимальные суммы ======
+// ====== Комиссии и лимиты ======
 const fees = {
     "USDT-TRC20": {fee:3.5, inUSD:false}, "USDT-TON": {fee:1, inUSD:false}, "BTC": {fee:0.0004, inUSD:false},
     "TON": {fee:0.05, inUSD:false}, "XAUT": {fee:1, inUSD:true}, "NOT": {fee:1, inUSD:true},
     "DOGS": {fee:1, inUSD:true}, "HMSTR": {fee:1, inUSD:true}, "X": {fee:1, inUSD:true},
     "MAJOR": {fee:1, inUSD:true}, "CATI": {fee:1, inUSD:true}, "TAC": {fee:1, inUSD:true},
     "TRX": {fee:0.3, inUSD:true}, "XLM": {fee:0.4, inUSD:true}, "FLR": {fee:0.3, inUSD:true},
-    "ETH": {fee:3.79, inUSD:false}, "SOL": {fee:0.006, inUSD:false}
+    "ETH": {fee:3.79, inUSD:true}, "SOL": {fee:0.006, inUSD:false}
 };
 const minWithdraw = {
     "USDT-TRC20":1,"USDT-TON":1,"BTC":0.0001,"TON":0.1,"XAUT":0.0002,"NOT":50,"DOGS":1000,
@@ -91,57 +111,60 @@ const minWithdraw = {
 const binanceSymbols = {
     "USDT-TRC20":"USDT","USDT-TON":"USDT","BTC":"BTC","ETH":"ETH","SOL":"SOL","TON":"TON",
     "TRX":"TRX","XLM":"XLM","NOT":"NOT","DOGS":"DOGS","HMSTR":"HMSTR","CATI":"CATI",
-    "XAUT":"XAUt","X":"XCOM","TAC":"TAC","FLR":"FLR","MAJOR":"MAJOR"
+    "XAUT":"XAUt","X":"XCOM","FLR":"FLR","MAJOR":"major"
 };
 const coinPaprikaIds = {
     "USDT-TRC20":"usdt-tether","USDT-TON":"usdt-tether","BTC":"btc-bitcoin","ETH":"eth-ethereum",
     "SOL":"sol-solana","TON":"ton-toncoin","TRX":"trx-tron","XLM":"xlm-stellar","NOT":"not-notcoin",
     "DOGS":"dogs-dogs-2","HMSTR":"hmstr-hamster","CATI":"cati-catizen","XAUT":"xaut-tether-gold",
-    "X":"x-x-empire","TAC":"tac-tacocat","FLR":"flr-flare-network","MAJOR":"major-major"
+    "X":"x-x-empire","FLR":"flr-flare-network","MAJOR":"major-major"
+};
+const coinGeckoIds = {
+    "USDT-TRC20":"tether","USDT-TON":"tether","BTC":"bitcoin","ETH":"ethereum",
+    "SOL":"solana","TON":"the-open-network","TRX":"tron","XLM":"stellar","NOT":"notcoin",
+    "DOGS":"dogs-2","HMSTR":"hamster-kombat","CATI":"catizen","XAUT":"tether-gold",
+    "X":"x-empire","TAC":"tac","FLR":"flare-networks","MAJOR":"major"
 };
 
-// ====== Цены ======
 let pricesCache = {};
 const cryptoSelect = document.getElementById("crypto");
 const amountInput = document.getElementById("amount");
 const resultDiv = document.getElementById("result");
+const refreshBtn = document.getElementById("refreshBtn");
 
-// ====== Получение курсов ======
-async function fetchPriceFromBinance(symbol){
-    const binSym = binanceSymbols[symbol];
-    if(!binSym) return null;
-    try {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binSym}USDT&_=${Date.now()}`);
-        const data = await res.json();
-        return parseFloat(data.price);
-    }catch{return null;}
-}
-async function fetchPriceFromCoinPaprika(symbol){
-    const id = coinPaprikaIds[symbol];
-    if(!id) return null;
-    try{
-        const res = await fetch(`https://api.coinpaprika.com/v1/tickers/${id}?_=${Date.now()}`);
-        const data = await res.json();
-        return data.quotes?.USD?.price??null;
-    }catch{return null;}
-}
+// ====== Получение курса с fallback ======
 async function fetchPrice(symbol){
-    let price = await fetchPriceFromBinance(symbol);
-    if(!price) price = await fetchPriceFromCoinPaprika(symbol);
-    return price;
+    const fetchers = [
+        async () => { if(!binanceSymbols[symbol]) return null; try { const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbols[symbol]}USDT`); if(!res.ok) return null; const data = await res.json(); return parseFloat(data.price); } catch{return null;} },
+        async () => { if(!coinPaprikaIds[symbol]) return null; try { const url = `https://api.allorigins.win/get?url=${encodeURIComponent('https://api.coinpaprika.com/v1/tickers/' + coinPaprikaIds[symbol])}`; const res = await fetch(url); if(!res.ok) return null; const data = await res.json(); const parsed = JSON.parse(data.contents); return parsed?.quotes?.USD?.price || null; } catch{return null;} },
+        async () => { if(!coinGeckoIds[symbol]) return null; try { const url = `https://api.allorigins.win/get?url=${encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=' + coinGeckoIds[symbol] + '&vs_currencies=usd')}`; const res = await fetch(url); if(!res.ok) return null; const data = await res.json(); const parsed = JSON.parse(data.contents); return parsed?.[coinGeckoIds[symbol]]?.usd || null; } catch{return null;} }
+    ];
+    for(const fn of fetchers){
+        const price = await fn();
+        if(price !== null) return price;
+    }
+    return null;
 }
+
+// ====== Загрузка курсов ======
 async function preloadPrices(){
     resultDiv.textContent="Загрузка курсов...";
     resultDiv.className="result loading";
-    pricesCache={};
-    for(let sym of Object.keys(binanceSymbols)){
+    amountInput.disabled = true;
+    refreshBtn.disabled = true;
+    pricesCache = {};
+    const allSymbols = Array.from(new Set([...Object.keys(binanceSymbols), ...Object.keys(coinPaprikaIds), ...Object.keys(coinGeckoIds)]));
+    for(const sym of allSymbols){
         const price = await fetchPrice(sym);
-        if(price!==null) pricesCache[sym]=price;
+        if(price !== null) pricesCache[sym] = price;
     }
     resultDiv.textContent="Курсы загружены.";
     resultDiv.className="result success";
+    amountInput.disabled = false;
+    refreshBtn.disabled = false;
+    updateResult();
 }
-setInterval(preloadPrices,180000);
+setInterval(preloadPrices, 300000); // 5 минут
 
 // ====== Callouts ======
 async function loadCallouts(){
@@ -152,20 +175,19 @@ async function loadCallouts(){
         const parser=new DOMParser();
         const doc=parser.parseFromString(data.contents,'text/html');
         const callouts=doc.querySelectorAll('.callout-yellow');
-        const calloutsContainer=document.getElementById('callouts');
-        calloutsContainer.innerHTML='';
+        const container=document.getElementById('callouts');
+        container.innerHTML='';
         callouts.forEach((c,i)=>{
             const div=document.createElement('div');
             div.className='callout-yellow';
-            div.innerHTML=c.innerHTML; // сохраняем форматирование
-            calloutsContainer.appendChild(div);
+            div.innerHTML=c.innerHTML;
+            container.appendChild(div);
             setTimeout(()=>div.classList.add('visible'),i*300);
         });
     }catch(e){console.log('Callouts не загрузились',e);}
 }
-loadCallouts();
 
-// ====== Расчёт ======
+// ====== Калькулятор ======
 function updateResult(){
     const crypto = cryptoSelect.value;
     const amount = parseFloat(amountInput.value);
@@ -173,32 +195,29 @@ function updateResult(){
     const minAmount = minWithdraw[crypto];
     const symbol = crypto.split('-')[0];
     resultDiv.className='result';
-
     if(isNaN(amount)||amount<=0){ resultDiv.textContent="Введите корректную сумму."; resultDiv.classList.add("warning"); return;}
     if(amount<minAmount){ resultDiv.textContent=`Минимальная сумма вывода для ${symbol} — ${minAmount} ${symbol}.`; resultDiv.classList.add("warning"); return;}
     if(!pricesCache[crypto]){ resultDiv.textContent=`⚠️ Курс для ${symbol} недоступен.`; resultDiv.classList.add("warning"); return;}
-
     const price=pricesCache[crypto];
-    let feeInToken = feeData.inUSD ? feeData.fee/price : feeData.fee;
-    const remaining=amount-feeInToken;
+    const feeInToken = feeData.inUSD ? feeData.fee/price : feeData.fee;
+    const remaining = amount - feeInToken;
     const feeDisplay = feeData.inUSD ? `${feeData.fee} USD (~${feeInToken.toFixed(6)} ${symbol})` : `${feeInToken.toFixed(6)} ${symbol}`;
-
     if(remaining<0){ resultDiv.textContent=`Сумма комиссии (${feeDisplay}) превышает введённую сумму.`; resultDiv.classList.add("warning"); return;}
     const remainingUSDT = remaining*price;
     resultDiv.innerHTML=`После вычета комиссии (${feeDisplay}) вы получите:<br><b>${remaining.toFixed(6)} ${symbol}</b> ≈ <b>${remainingUSDT.toFixed(2)} USDT</b>`;
     resultDiv.classList.add("success");
 }
+
 cryptoSelect.addEventListener("change",updateResult);
 amountInput.addEventListener("input",updateResult);
+refreshBtn.addEventListener("click", preloadPrices);
 
-// ====== Обновление при возвращении в Web App ======
-document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden){ preloadPrices(); loadCallouts(); }
-});
+// ====== Обновление при возвращении 
+//.addEventListener('visibilitychange',()=>{ if(!document.hidden){ preloadPrices(); loadCallouts(); }});
+//window.addEventListener('focus',()=>{ preloadPrices(); loadCallouts(); });
 
 // ====== Старт ======
-preloadPrices();
-updateResult();
+(async()=>{ await loadCallouts(); await preloadPrices(); updateResult(); })();
 </script>
 </body>
 </html>
