@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Калькулятор</title>
+<title>Калькулятор вывода криптовалют</title>
 <style>
 body { font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; background: linear-gradient(135deg, #37aee2, #1c9ceb); }
 .page-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; }
@@ -134,9 +134,7 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 const fees = {"USDT-TRC20":{fee:3.5,inUSD:false},"USDT-TON":{fee:1,inUSD:false},"BTC":{fee:0.0004,inUSD:false},"TON":{fee:0.05,inUSD:false},"XAUT":{fee:1,inUSD:true},"NOT":{fee:1,inUSD:true},"DOGS":{fee:1,inUSD:true},"HMSTR":{fee:1,inUSD:true},"X":{fee:1,inUSD:true},"MAJOR":{fee:1,inUSD:true},"CATI":{fee:1,inUSD:true},"TAC":{fee:1,inUSD:true},"TRX":{fee:0.3,inUSD:true},"XLM":{fee:0.4,inUSD:true},"FLR":{fee:0.3,inUSD:true},"ETH":{fee:3.79,inUSD:true},"SOL":{fee:0.006,inUSD:false}};
 const minWithdraw={"USDT-TRC20":1,"USDT-TON":1,"BTC":0.0001,"TON":0.1,"XAUT":0.0002,"NOT":50,"DOGS":1000,"HMSTR":150,"X":6000,"MAJOR":1,"CATI":1,"TAC":0.1,"TRX":0,"XLM":0,"FLR":0,"ETH":0,"SOL":0};
 
-// ===== Тикеры =====
-const binanceSymbols = {"USDT-TRC20":"USDT","USDT-TON":"USDT","BTC":"BTC","ETH":"ETH","SOL":"SOL","TON":"TON","TRX":"TRX","XLM":"XLM","NOT":"NOT","DOGS":"DOGS","HMSTR":"HMSTR","CATI":"CATI","XAUT":"XAUt","X":"XCOM","FLR":"FLR","MAJOR":"major"};
-const coinPaprikaIds = {"USDT-TRC20":"usdt-tether","USDT-TON":"usdt-tether","BTC":"btc-bitcoin","ETH":"eth-ethereum","SOL":"sol-solana","TON":"ton-toncoin","TRX":"trx-tron","XLM":"xlm-stellar","NOT":"not-notcoin","DOGS":"dogs-dogs-2","HMSTR":"hmstr-hamster","CATI":"cati-catizen","XAUT":"xaut-tether-gold","X":"x-x-empire","FLR":"flr-flare-network","MAJOR":"major-major","TAC":"tac"};
+// ===== CoinGecko IDs =====
 const coinGeckoIds = {"USDT-TRC20":"tether","USDT-TON":"tether","BTC":"bitcoin","ETH":"ethereum","SOL":"solana","TON":"the-open-network","TRX":"tron","XLM":"stellar","NOT":"notcoin","DOGS":"dogs-2","HMSTR":"hamster-kombat","CATI":"catizen","XAUT":"tether-gold","X":"x-empire","FLR":"flare-networks","MAJOR":"major","TAC":"tac"};
 
 let pricesCache={};
@@ -156,83 +154,91 @@ function lockInputs(lock){
     refreshBtn.disabled=lock; refreshBtnConvert.disabled=lock;
 }
 
-// ====== Получение всех курсов ======
+// ====== Получение курсов (только CoinGecko) ======
 async function preloadPrices(){
     lockInputs(true);
-    resultDiv.textContent="Загрузка курсов..."; resultDiv.className="result loading";
-    convResult.textContent="Загрузка курсов..."; convResult.className="result loading";
+    resultDiv.textContent="Загрузка курсов...";
+    resultDiv.className="result loading";
+    convResult.textContent="Загрузка курсов...";
+    convResult.className="result loading";
     pricesCache={};
 
     const allSymbols = Object.keys(coinGeckoIds);
 
-    try{
-        const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids='+allSymbols.map(s=>coinGeckoIds[s]).join(',')+'&vs_currencies=usd');
+    try {
+        const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent(
+            'https://api.coingecko.com/api/v3/simple/price?ids=' +
+            allSymbols.map(s => coinGeckoIds[s]).join(',') +
+            '&vs_currencies=usd'
+        );
         const res = await fetch(url);
         const data = await res.json();
         const parsed = JSON.parse(data.contents);
         for(const s of allSymbols){
-            if(parsed[coinGeckoIds[s]]?.usd!==undefined)
-                pricesCache[s]={price:parsed[coinGeckoIds[s]].usd, source:'CoinGecko'};
+            if(parsed[coinGeckoIds[s]]?.usd !== undefined){
+                pricesCache[s] = {price: parsed[coinGeckoIds[s]].usd};
+            }
         }
-    }catch(e){console.log("CoinGecko failed",e);}
-
-    for(const s of allSymbols){
-        if(!pricesCache[s] && coinPaprikaIds[s]){
-            try{
-                const url='https://api.allorigins.win/get?url='+encodeURIComponent('https://api.coinpaprika.com/v1/tickers/'+coinPaprikaIds[s]);
-                const res=await fetch(url); 
-                const data=await res.json();
-                const parsed=JSON.parse(data.contents);
-                if(parsed?.quotes?.USD?.price!==undefined)
-                    pricesCache[s]={price:parsed.quotes.USD.price, source:'CoinPaprika'};
-            }catch(e){console.log("CoinPaprika failed for",s,e);}
-        }
+    } catch(e) {
+        console.log("CoinGecko failed", e);
     }
 
-    // 3 секунды задержка
+    // Задержка 3 секунды
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    resultDiv.textContent="Курсы загружены."; 
+    resultDiv.textContent="Курсы загружены.";
     resultDiv.className="result success";
-    convResult.textContent="Курсы загружены."; 
+    convResult.textContent="Курсы загружены.";
     convResult.className="result success";
     lockInputs(false);
-    updateResult(); 
+
+    updateResult();
     updateConvert();
 }
 
 // ====== Вывод ======
 function updateResult(){
-    const c=cryptoSelect.value,a=parseFloat(amountInput.value),f=fees[c],m=minWithdraw[c],s=c.split('-')[0];
+    const c = cryptoSelect.value;
+    const a = parseFloat(amountInput.value);
+    const f = fees[c];
+    const m = minWithdraw[c];
+    const s = c.split('-')[0];
+
     resultDiv.className='result';
     if(isNaN(a)||a<=0){resultDiv.textContent="Введите корректную сумму.";resultDiv.classList.add("warning");return;}
-    if(a<m){resultDiv.textContent=`Минимальная сумма вывода для ${s} — ${m} ${s}.`;resultDiv.classList.add("warning");return;}
-    if(!pricesCache[c]){resultDiv.textContent=`⚠️ Курс для ${s} недоступен.`;resultDiv.classList.add("warning");return;}
-    const p=pricesCache[c].price, src=pricesCache[c].source;
-    const fee=f.inUSD?f.fee/p:f.fee; const rem=a-fee;
-    const feeTxt=f.inUSD?`${f.fee} USD (~${fee.toFixed(6)} ${s})`:`${fee.toFixed(6)} ${s}`;
-    if(rem<0){resultDiv.textContent=`Сумма комиссии (${feeTxt}) превышает введённую сумму.`;resultDiv.classList.add("warning");return;}
-    const remUSDT=rem*p;
+    if(a < m){resultDiv.textContent=`Минимальная сумма вывода для ${s} — ${m} ${s}.`;resultDiv.classList.add("warning");return;}
+    if(!pricesCache[c] || pricesCache[c].price === undefined){resultDiv.textContent=`⚠️ Курс для ${s} недоступен.`;resultDiv.classList.add("warning");return;}
+
+    const p = pricesCache[c].price;
+    const fee = f.inUSD ? f.fee / p : f.fee;
+    const rem = a - fee;
+    const feeTxt = f.inUSD ? `${f.fee} USD (~${fee.toFixed(6)} ${s})` : `${fee.toFixed(6)} ${s}`;
+    if(rem < 0){resultDiv.textContent=`Сумма комиссии (${feeTxt}) превышает введённую сумму.`;resultDiv.classList.add("warning");return;}
+    const remUSDT = rem * p;
     resultDiv.innerHTML=`После вычета комиссии (${feeTxt}) вы получите:<br><b>${rem.toFixed(6)} ${s}</b> ≈ <b>${remUSDT.toFixed(2)} USDT</b><br>`;
     resultDiv.classList.add("success");
 }
-cryptoSelect.addEventListener("change",updateResult);
-amountInput.addEventListener("input",updateResult);
-refreshBtn.addEventListener("click",preloadPrices);
-refreshBtnConvert.addEventListener("click",preloadPrices);
 
 // ====== Конвертер ======
 function updateConvert(){
-    const c=convSel.value,a=parseFloat(convAmount.value);
-    if(!pricesCache[c]){convResult.textContent='Курс недоступен'; return;}
-    if(isNaN(a)||a<=0){convResult.textContent='Введите сумму'; return;}
-    const p=pricesCache[c].price, src=pricesCache[c].source;
+    const c = convSel.value;
+    const a = parseFloat(convAmount.value);
+
+    if(!pricesCache[c] || pricesCache[c].price === undefined){convResult.textContent='Курс недоступен'; return;}
+    if(isNaN(a) || a <= 0){convResult.textContent='Введите сумму'; return;}
+
+    const p = pricesCache[c].price;
     convResult.innerHTML=`${a} ${c} ≈ ${(a*p).toFixed(4)} USDT<br>`;
     convResult.style.background='#d6f2ff';
     setTimeout(()=>convResult.style.background='#e6f4ff',200);
 }
+
+cryptoSelect.addEventListener("change",updateResult);
+amountInput.addEventListener("input",updateResult);
 convSel.addEventListener('change',updateConvert);
 convAmount.addEventListener('input',updateConvert);
+refreshBtn.addEventListener("click",preloadPrices);
+refreshBtnConvert.addEventListener("click",preloadPrices);
 
 // ====== Вкладки ======
 document.querySelectorAll('.tab-btn').forEach(b=>{
@@ -248,10 +254,7 @@ document.querySelectorAll('.tab-btn').forEach(b=>{
 const display=document.getElementById('calc-display');
 const resultLine=document.getElementById('calc-result-line');
 let expression='';
-function calculateAndShow(){
- if(expression.trim()===''){resultLine.textContent='= 0'; return;}
- try{const res=eval(expression); resultLine.textContent='= '+res;}catch{resultLine.textContent='= Ошибка';}
-}
+function calculateAndShow(){ if(expression.trim()===''){resultLine.textContent='= 0'; return;} try{const res=eval(expression); resultLine.textContent='= '+res;}catch{resultLine.textContent='= Ошибка';}}
 document.querySelectorAll('#calc .calc-buttons button').forEach(btn=>{
  btn.addEventListener('click',()=>{
   const val=btn.textContent;
@@ -282,5 +285,3 @@ async function loadCallouts(){
 </script>
 </body>
 </html>
-
-
