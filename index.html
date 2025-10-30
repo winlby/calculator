@@ -4,37 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Калькулятор вывода криптовалют</title>
+
+
 <style>
-body { font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; justify-content: center; padding: 20px; margin: 50px; background: linear-gradient(135deg, #37aee2, #1c9ceb); }
-.page-container { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; }
-.tabs { display: flex; width: 100%; margin-bottom: 15px; }
-.tab-btn { flex: 1; background: #ffffffaa; border: none; padding: 10px; border-radius: 10px 10px 0 0; cursor: pointer; font-size: 1em; font-weight: 600; transition: all 0.3s; }
-.tab-btn.active { background: #fff; color: #1c9ceb; }
-.tab-content { display: none; width: 100%; }
-.tab-content.active { display: block; }
-.calculator, .converter, .simple-calc { background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 100%; }
-h1 { font-size: 1.5em; margin-bottom: 20px; color: #222; }
-select,input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 10px; border: 1px solid #ddd; font-size: 1em; transition: all 0.3s; }
-input:disabled, select:disabled { background: #f0f0f0; color: #999; cursor: not-allowed; }
-button { padding: 4px 10px; border-radius: 6px; border: none; background: #1c9ceb; color: #fff; font-size: 0.8em; cursor: pointer; margin-left: 10px; transition: background 0.3s; vertical-align: middle; }
-button:hover { background: #0d7ecf; }
-button:disabled { background: #aaa; cursor: not-allowed; }
-.result { margin-top: 20px; font-size: 1.1em; padding: 10px; border-radius: 10px; transition: all 0.3s; }
-.note { margin-top: 10px; font-size: 0.9em; color: #444; background: #f5f5f5; padding: 8px; border-radius: 8px; text-align: left; }
-.note-small { margin-top: 10px; font-size: 0.8em; color: #666; text-align: left; display: flex; align-items: center; }
-.warning { background: #ffe0e0; color: #c00; }
-.success { background: #e0ffe0; color: #080; }
-.loading { background: #fff3cd; color: #a67c00; }
-.callout-yellow { background-color:#fff3cd; color:#856404; padding:10px; border-radius:10px; margin-top:10px; font-size:0.95em; text-align:left; opacity:0; transform:translateY(10px); transition: opacity 0.8s ease, transform 0.8s ease; width:100%; }
-.callout-yellow.visible { opacity:1; transform:translateY(0); }
-.calc-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-.calc-buttons button { font-size: 1.1em; padding: 15px; }
-.calc-display-wrapper { position: relative; text-align: right; }
-.calc-display { width: 100%; font-size: 1.3em; padding: 10px; margin-bottom: 5px; text-align: right; }
-.calc-result-line { font-size: 1.5em; text-align: right; color: #0d7ecf; font-weight: 700; background: #e6f4ff; border-radius: 10px; padding: 5px 10px; margin-top: 5px; box-shadow: inset 0 0 5px rgba(28,156,235,0.2); user-select: text; transition: all 0.3s; }
-.converter select, .converter input { margin-bottom: 15px; }
-#conv-result { background: #e6f4ff; border-radius: 10px; font-weight: 600; font-size: 1.2em; padding: 12px; color: #0d7ecf; transition: all 0.3s ease; box-shadow: inset 0 0 5px rgba(28,156,235,0.15); }
+body{font-family:'Segoe UI',Tahoma,sans-serif;display:flex;justify-content:center;align-items:flex-start;padding:20px 0;margin:0;background:linear-gradient(135deg,#37aee2,#1c9ceb);} 
+.page-container{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto;text-align:center;} 
+.tabs{display:flex;justify-content:center;align-items:center;gap:5px;width:100%;margin-bottom:15px;} 
+.tab-btn{flex:none;background:#ffffffaa;border:none;padding:10px 15px;border-radius:10px 10px 0 0;cursor:pointer;font-size:1em;font-weight:600;transition:all .3s;} 
+.tab-btn.active{background:#fff;color:#1c9ceb;} 
+.tab-content{display:none;width:100%;} 
+.tab-content.active{display:block;} 
+.calculator,.converter,.simple-calc{background:#fff;padding:30px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.1);text-align:center; width: auto; max-width: 380px;margin: 0 auto 20px;box-sizing: border-box; } 
+h1{font-size:1.5em;margin-bottom:20px;color:#222;} 
+select,input{width:100%;padding:10px;margin:10px 0;border-radius:10px;border:1px solid #ddd;font-size:1em;transition:all .3s;} 
+input:disabled,select:disabled{background:#f0f0f0;color:#999;cursor:not-allowed;} 
+button{padding:4px 10px;border-radius:6px;border:none;background:#1c9ceb;color:#fff;font-size:.8em;cursor:pointer;margin-left:10px;transition:background .3s;vertical-align:middle;} 
+button:hover{background:#0d7ecf;} 
+button:disabled{background:#aaa;cursor:not-allowed;} 
+.result{margin-top:20px;font-size:1.1em;padding:10px;border-radius:10px;transition:all .3s;} 
+.note{margin-top:10px;font-size:.9em;color:#444;background:#f5f5f5;padding:8px;border-radius:8px;text-align:left;} 
+.note-small{margin-top:10px;font-size:.8em;color:#666;text-align:left;display:flex;align-items:center;} 
+.warning{background:#ffe0e0;color:#c00;} 
+.success{background:#e0ffe0;color:#080;} 
+.loading{background:#fff3cd;color:#a67c00;} 
+.callout-yellow{background-color:#fff3cd;color:#856404;padding:10px;border-radius:10px;margin-top:10px;font-size:.95em;text-align:left;opacity:0;transform:translateY(10px);transition:opacity .8s ease,transform .8s ease;max-width:380px;width:100%;margin-left:auto;margin-right:auto;} 
+.callout-yellow.visible{opacity:1;transform:translateY(0);} 
+.calc-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;} 
+.calc-buttons button{font-size:1.1em;padding:15px;} 
+.calc-display-wrapper{position:relative;text-align:right;} 
+.calc-display{width:100%;font-size:1.3em;padding:10px;margin-bottom:5px;text-align:right;} 
+.calc-result-line{font-size:1.5em;text-align:right;color:#0d7ecf;font-weight:700;background:#e6f4ff;border-radius:10px;padding:5px 10px;margin-top:5px;box-shadow:inset 0 0 5px rgba(28,156,235,.2);user-select:text;transition:all .3s;} 
+.converter select,.converter input{margin-bottom:15px;} 
+#conv-result{background:#e6f4ff;border-radius:10px;font-weight:600;font-size:1.2em;padding:12px;color:#0d7ecf;transition:all .3s ease;box-shadow:inset 0 0 5px rgba(28,156,235,.15);}
 </style>
+
+
+
 </head>
 <body>
 <div class="page-container">
@@ -155,6 +160,8 @@ function lockInputs(lock){
 }
 
 // ====== Получение курсов (только CoinGecko) ======
+
+
 async function preloadPrices(){
     lockInputs(true);
     resultDiv.textContent="Загрузка курсов...";
@@ -166,24 +173,26 @@ async function preloadPrices(){
     const allSymbols = Object.keys(coinGeckoIds);
 
     try {
-        const url = 'https://api.allorigins.win/get?url=' + encodeURIComponent(
-            'https://api.coingecko.com/api/v3/simple/price?ids=' +
-            allSymbols.map(s => coinGeckoIds[s]).join(',') +
-            '&vs_currencies=usd'
-        );
+        const url = 'https://api.coingecko.com/api/v3/simple/price?ids=' +
+                    allSymbols.map(s => coinGeckoIds[s]).join(',') +
+                    '&vs_currencies=usd';
+        console.log("Fetching:", url);
         const res = await fetch(url);
-        const data = await res.json();
-        const parsed = JSON.parse(data.contents);
+        const parsed = await res.json();
+        console.log("CoinGecko response:", parsed);
+
         for(const s of allSymbols){
             if(parsed[coinGeckoIds[s]]?.usd !== undefined){
                 pricesCache[s] = {price: parsed[coinGeckoIds[s]].usd};
+            } else {
+                console.warn(`Нет курса для ${s} (ID ${coinGeckoIds[s]})`);
             }
         }
     } catch(e) {
-        console.log("CoinGecko failed", e);
+        console.error("Ошибка при получении курсов:", e);
     }
 
-    // Задержка 3 секунды
+ // Задержка 3 секунды
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     resultDiv.textContent="Курсы загружены.";
@@ -195,6 +204,12 @@ async function preloadPrices(){
     updateResult();
     updateConvert();
 }
+
+
+
+
+
+
 
 // ====== Вывод ======
 function updateResult(){
@@ -254,19 +269,82 @@ document.querySelectorAll('.tab-btn').forEach(b=>{
 const display=document.getElementById('calc-display');
 const resultLine=document.getElementById('calc-result-line');
 let expression='';
-function calculateAndShow(){ if(expression.trim()===''){resultLine.textContent='= 0'; return;} try{const res=eval(expression); resultLine.textContent='= '+res;}catch{resultLine.textContent='= Ошибка';}}
+
+function calculateAndShow(){ 
+    if(expression.trim()===''){ 
+        resultLine.textContent='= 0'; 
+        return;
+    } 
+    try{
+        // заменяем запятую на точку перед вычислением
+        const expr = expression.replace(/,/g, '.');
+        const res = eval(expr); 
+        resultLine.textContent='= '+res;
+    } catch {
+        resultLine.textContent='= Ошибка';
+    }
+}
+
 document.querySelectorAll('#calc .calc-buttons button').forEach(btn=>{
- btn.addEventListener('click',()=>{
-  const val=btn.textContent;
-  if(val==='C'){expression='';display.value='';resultLine.textContent='= 0';}
-  else if(val==='='){try{const r=eval(expression);resultLine.textContent='= '+r; expression=r.toString(); display.value=expression;}catch{resultLine.textContent='= Ошибка';}}
-  else{expression+=val; display.value=expression; calculateAndShow();}
- });
+    btn.addEventListener('click',()=>{
+        const val=btn.textContent;
+        if(val==='C'){
+            expression=''; display.value=''; resultLine.textContent='= 0';
+        }
+        else if(val==='='){
+            try{
+                const expr = expression.replace(/,/g, '.');
+                const r = eval(expr);
+                resultLine.textContent='= '+r; 
+                expression = r.toString(); 
+                display.value = expression;
+            } catch {
+                resultLine.textContent='= Ошибка';
+            }
+        }
+        else{
+            expression += val; 
+            display.value = expression; 
+            calculateAndShow();
+        }
+    });
 });
-display.addEventListener('input',()=>{expression=display.value; calculateAndShow();});
-display.addEventListener('paste',e=>{e.preventDefault(); const t=(e.clipboardData||window.clipboardData).getData('text'); expression+=t; display.value=expression; calculateAndShow();});
-display.addEventListener('copy',e=>{e.clipboardData.setData('text/plain',display.value); e.preventDefault();});
-display.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault(); try{const r=eval(expression); resultLine.textContent='= '+r; expression=r.toString(); display.value=expression;}catch{resultLine.textContent='= Ошибка';}}});
+
+display.addEventListener('input',()=>{
+    expression = display.value; 
+    calculateAndShow();
+});
+
+display.addEventListener('paste', e=>{
+    e.preventDefault();
+    const t = (e.clipboardData||window.clipboardData).getData('text');
+    expression += t;
+    display.value = expression;
+    calculateAndShow();
+});
+
+display.addEventListener('copy', e=>{
+    e.clipboardData.setData('text/plain', display.value); 
+    e.preventDefault();
+});
+
+display.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+        e.preventDefault(); 
+        try{
+            const expr = expression.replace(/,/g, '.');
+            const r = eval(expr); 
+            resultLine.textContent='= '+r; 
+            expression = r.toString(); 
+            display.value = expression;
+        } catch {
+            resultLine.textContent='= Ошибка';
+        }
+    }
+});
+
+
+
 
 // ====== Callouts ======
 async function loadCallouts(){
